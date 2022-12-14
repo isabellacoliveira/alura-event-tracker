@@ -1,13 +1,11 @@
-
 import React from 'react'
 import style from './Calendario.module.scss';
 import ptBR from './localizacao/ptBR.json'
-import Kalend, { CalendarView } from 'kalend'
+import Kalend, { CalendarEvent, CalendarView, OnEventDragFinish } from 'kalend'
 import 'kalend/dist/styles/index.css';
-import { useRecoilValue } from 'recoil';
-import { listaDeEventosState } from '../../state/atom';
+import useAtualizarEvento from '../../state/hooks/useAtualizarEvento';
+import useListaDeEventos from '../../state/hooks/useListaDeEventos';
 
-// isso representa o evento do calendario 
 interface IKalendEvento {
   id?: number
   startAt: string
@@ -19,15 +17,12 @@ interface IKalendEvento {
 const Calendario: React.FC = () => {
 
   const eventosKalend = new Map<string, IKalendEvento[]>();
-  const eventos = useRecoilValue(listaDeEventosState); 
-
+  const eventos = useListaDeEventos()
+  const atualizarEvento = useAtualizarEvento()
 
   eventos.forEach(evento => {
-    // para cada evento ele pega uma chave 
-    // ele pega a data de inicio e os 10 primeiros caracteres
     const chave = evento.inicio.toISOString().slice(0, 10)
     if (!eventosKalend.has(chave)) {
-      // se ele não tem a chave ele coloca um array vazio 
       eventosKalend.set(chave, [])
     }
     eventosKalend.get(chave)?.push({
@@ -38,6 +33,23 @@ const Calendario: React.FC = () => {
       color: 'blue'
     })
   })
+
+  const onEventDragFinish: OnEventDragFinish = (
+    kalendEventoInalterado: CalendarEvent,
+    kalendEventoAtualizado: CalendarEvent
+  ) => {
+    const evento = eventos.find(evento => evento.descricao === kalendEventoAtualizado.summary)
+    if (evento) {
+      const eventoAtualizado = {
+        ...evento
+      }
+      eventoAtualizado.inicio = new Date(kalendEventoAtualizado.startAt)
+      eventoAtualizado.fim = new Date(kalendEventoAtualizado.endAt)
+      atualizarEvento(eventoAtualizado)
+    }
+
+  };
+
   return (
     <div className={style.Container}>
       <Kalend
@@ -50,6 +62,7 @@ const Calendario: React.FC = () => {
         calendarIDsHidden={['work']}
         language={'customLanguage'}
         customLanguage={ptBR}
+        onEventDragFinish={onEventDragFinish}
       />
     </div>
   );
